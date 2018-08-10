@@ -1,0 +1,15 @@
+{
+  "database_name": {
+    "url": "jdbc:postgresql://localhost:5432/zep_db",
+    "driver": "org.postgresql.Driver",
+    "username": "zeppelin",
+    "password": "pass1234"
+  },
+  "remote_conf": {
+    "url": "jdbc:postgresql://some-url:5432/db_test",
+    "driver": "org.postgresql.Driver",
+    "username": "Pretty_boy",
+    "password": "say_the_password_777",
+    "schema_filter": ["schema%", "storage", "users_schema"]
+  }
+}
