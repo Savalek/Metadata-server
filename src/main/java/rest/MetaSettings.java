@@ -6,13 +6,12 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MetaSettings {
-  public static int RES_POOL_MIN_CONNECTIONS = 0;
-  public static int RES_POOL_MAX_CONNECTIONS = 40;
-  public static int RES_POOL_CONNECTION_TTL = 15;
-  public static int CACHE_TTL = 600;
-  public static int JSTREE_SEARCH_LIMIT = 20;
-  public static int PARALLEL_UPDATE_DB_COUNT = 4;
-  public static int PERSON;
+  public static int RES_POOL_MIN_CONNECTIONS = 0;  // default
+  public static int RES_POOL_MAX_CONNECTIONS = 40; // default
+  public static int RES_POOL_CONNECTION_TTL = 15;  // default
+  public static int CACHE_TTL = 600;               // default
+  public static int JSTREE_SEARCH_LIMIT = 20;      // default
+  public static int PARALLEL_UPDATE_DB_COUNT = 4;  // default
 
   @Value("${RES_POOL_MIN_CONNECTIONS}")
   public void setResPoolMinConnections(int resPoolMinConnections) {
