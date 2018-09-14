@@ -1,4 +1,7 @@
 .idea/*
 logs/*
+lib/*
+*.log
+*.pid
 metaserver.iml
 connections-config.json
