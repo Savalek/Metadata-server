@@ -4,9 +4,9 @@ start   - start metadata server\n\t
 stop    - close metadata server\n\t
 reload  - close metadata server "
 
-ROOT_DIR=$(dirname $0)/../
+ROOT_DIR=$(dirname $0)/..
 
-METASERVER_PID_FILE="${ROOT_DIR}bin/${HOSTNAME}.pid"
+METASERVER_PID_FILE="${HOSTNAME}.pid"
 METASERVER_PID=$(cat ${METASERVER_PID_FILE})
 
 function start_server {
