@@ -46,18 +46,27 @@ public class ConnectionPool {
   }
 
   private void removeOldConnections() {
-    if (availableConn.size() > MetaSettings.RES_POOL_MIN_CONNECTIONS) {
-      synchronized (availableConn) {
-        ArrayList<CPConnection> connToRemove = new ArrayList<>();
-        for (CPConnection connection : availableConn) {
-          if (connection.isOld()) {
-            connToRemove.add(connection);
-            if (availableConn.size() - connToRemove.size() <= MetaSettings.RES_POOL_MIN_CONNECTIONS) {
-              break;
-            }
-          }
+    synchronized (availableConn) {
+      ArrayList<CPConnection> connToRemove = new ArrayList<>();
+      for (CPConnection connection : availableConn) {
+
+        if (connection.isOldByTTL()) {
+          connToRemove.add(connection);
+          continue;
         }
-        connToRemove.forEach(this::removeAndCloseConnection);
+
+        if (connection.isOldByInactivity()) {
+          if (availableConn.size() - connToRemove.size() <= MetaSettings.RES_POOL_MIN_CONNECTIONS) {
+            continue;
+          }
+          connToRemove.add(connection);
+        }
+      }
+      connToRemove.forEach(this::removeAndCloseConnection);
+
+      while (availableConn.size() < MetaSettings.RES_POOL_MIN_CONNECTIONS &&
+              (availableConn.size() + busyConn.size()) < MetaSettings.RES_POOL_MAX_CONNECTIONS) {
+        availableConn.add(getNewConnection());
       }
     }
   }
@@ -72,7 +81,9 @@ public class ConnectionPool {
         busyConn.add(connection);
         return connection;
       } else {
-        return getNewConnection();
+        CPConnection newConnection = getNewConnection();
+        busyConn.add(newConnection);
+        return newConnection;
       }
     } catch (InterruptedException e) {
       LOGGER.error("getConnection error", e);
@@ -82,16 +93,17 @@ public class ConnectionPool {
 
   synchronized void releaseConnection(CPConnection connection) {
     busyConn.remove(connection);
-    availableConn.add(connection);
-    this.notify();
+    if (connection.isOldByTTL()) {
+      removeAndCloseConnection(connection);
+    } else {
+      availableConn.add(connection);
+      this.notify();
+    }
   }
 
   private CPConnection getNewConnection() {
     try {
-      CPConnection connection =
-              new CPConnection(DriverManager.getConnection(url, username, password), this);
-      busyConn.add(connection);
-      return connection;
+      return new CPConnection(DriverManager.getConnection(url, username, password), this);
     } catch (Exception e) {
       LOGGER.error("Can't open new connection", e);
       return null;
@@ -114,11 +126,13 @@ class CPConnection implements AutoCloseable {
   private Connection connection;
   private ConnectionPool connectionPool;
   private long lastUsed;
+  private long createTime;
 
   CPConnection(Connection connection, ConnectionPool connectionPool) {
     this.connection = connection;
     this.connectionPool = connectionPool;
     lastUsed = System.currentTimeMillis();
+    createTime = System.currentTimeMillis();
   }
 
   public Connection getConnection() {
@@ -135,9 +149,14 @@ class CPConnection implements AutoCloseable {
     connection.close();
   }
 
-  boolean isOld() {
-    return (System.currentTimeMillis() - lastUsed) / 1000 > MetaSettings.RES_POOL_CONNECTION_TTL;
+  boolean isOldByInactivity() {
+    return (System.currentTimeMillis() - lastUsed) / 1000 > MetaSettings.RES_POOL_CONN_MAX_INACTIVITY_TIME;
   }
+
+  boolean isOldByTTL() {
+    return (System.currentTimeMillis() - createTime) / 1000 > MetaSettings.RES_POOL_CONN_TTL;
+  }
+
 
   DatabaseMetaData getMetaData() throws SQLException {
     return connection.getMetaData();

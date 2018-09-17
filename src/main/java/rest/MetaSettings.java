@@ -6,12 +6,13 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MetaSettings {
-  public static int RES_POOL_MIN_CONNECTIONS = 0;  // default
-  public static int RES_POOL_MAX_CONNECTIONS = 40; // default
-  public static int RES_POOL_CONNECTION_TTL = 15;  // default
-  public static int CACHE_TTL = 600;               // default
-  public static int JSTREE_SEARCH_LIMIT = 20;      // default
-  public static int PARALLEL_UPDATE_DB_COUNT = 4;  // default
+  public static int RES_POOL_MIN_CONNECTIONS = 0;           // default
+  public static int RES_POOL_MAX_CONNECTIONS = 40;          // default
+  public static int RES_POOL_CONN_MAX_INACTIVITY_TIME = 15; // default
+  public static int RES_POOL_CONN_TTL = 600;                // default
+  public static int CACHE_TTL = 600;                        // default
+  public static int JSTREE_SEARCH_LIMIT = 20;               // default
+  public static int PARALLEL_UPDATE_DB_COUNT = 4;           // default
 
   @Value("${RES_POOL_MIN_CONNECTIONS}")
   public void setResPoolMinConnections(int resPoolMinConnections) {
@@ -23,9 +24,14 @@ public class MetaSettings {
     RES_POOL_MAX_CONNECTIONS = resPoolMaxConnections;
   }
 
-  @Value("${RES_POOL_CONNECTION_TTL}")
-  public void setResPoolConnectionTtl(int resPoolConnectionTtl) {
-    RES_POOL_CONNECTION_TTL = resPoolConnectionTtl;
+  @Value("${RES_POOL_CONN_MAX_INACTIVITY_TIME}")
+  public void setResPoolConnMaxInactivityTime(int resPoolConnMaxInactivityTime) {
+    RES_POOL_CONN_MAX_INACTIVITY_TIME = resPoolConnMaxInactivityTime;
+  }
+
+  @Value("${RES_POOL_CONN_TTL}")
+  public void setResPoolConnTTL(int resPoolConnTTL) {
+    RES_POOL_CONN_TTL = resPoolConnTTL;
   }
 
   @Value("${CACHE_TTL}")
