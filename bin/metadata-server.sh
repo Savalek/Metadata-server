@@ -6,7 +6,9 @@ reload  - close metadata server "
 
 ROOT_DIR=$(dirname $0)/..
 
-METASERVER_PID_FILE="${HOSTNAME}.pid"
+METASERVER_PID_FILE="./${ROOT_DIR}/bin/${HOSTNAME}.pid"
+export LOGS_DIR=${ROOT_DIR}/logs
+
 METASERVER_PID=$(cat ${METASERVER_PID_FILE})
 
 function start_server {
@@ -17,8 +19,8 @@ function start_server {
  fi
 
  echo "### Start metadata server"
- java -jar ./${ROOT_DIR}/lib/metaserver-1.0.0.jar --spring.config.name=application,conf --spring.config.location=file:./${ROOT_DIR}/conf/ > /dev/null &
- echo $! >${HOSTNAME}.pid
+ java -jar ./${ROOT_DIR}/lib/metaserver-1.0.0.jar --spring.config.location=file:./${ROOT_DIR}/conf/ --connections.config=./${ROOT_DIR}/conf/connections-config.json > /dev/null &
+ echo $! >${METASERVER_PID_FILE}
  echo "### Metadata server start (PID: $(cat ${METASERVER_PID_FILE}))"
 }
 

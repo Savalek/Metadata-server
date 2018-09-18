@@ -34,9 +34,9 @@ public class MetadataCacheServer {
     try {
       FileReader fileReader;
       try {
+        fileReader = new FileReader(MetaSettings.CONNECTIONS_CONFIG_FILE_PATH);
+      } catch (Exception e) {
         fileReader = new FileReader("conf/connections-config.json");
-      } catch (FileNotFoundException e) {
-        fileReader = new FileReader("../conf/connections-config.json");
       }
       JsonElement element = new JsonParser().parse(fileReader);
 

@@ -14,6 +14,8 @@ public class MetaSettings {
   public static int JSTREE_SEARCH_LIMIT = 20;               // default
   public static int PARALLEL_UPDATE_DB_COUNT = 4;           // default
 
+  public static String CONNECTIONS_CONFIG_FILE_PATH;
+
   @Value("${RES_POOL_MIN_CONNECTIONS}")
   public void setResPoolMinConnections(int resPoolMinConnections) {
     RES_POOL_MIN_CONNECTIONS = resPoolMinConnections;
