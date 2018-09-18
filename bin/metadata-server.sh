@@ -1,8 +1,8 @@
 #!/bin/bash
 USAGE="-e Command is not recognized! Available:\n\t
 start   - start metadata server\n\t
-stop    - close metadata server\n\t
-reload  - close metadata server "
+stop    - stop metadata server\n\t
+reload  - stop and start metadata server "
 
 ROOT_DIR=$(dirname $0)/..
 
