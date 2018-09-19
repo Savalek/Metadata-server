@@ -142,7 +142,7 @@ public class MetadataCacheServer {
 
   public HashSet<Integer> jstreeSearch(String databaseName, String searchString) throws IllegalArgumentException {
     DatabaseCache db = getDatabaseCache(databaseName);
-    return db.searchElements(searchString);
+    return db.jstreeGetParentsOfElements(searchString);
   }
 
   public JsonObject jstreeMassload(String databaseName, ArrayList<Integer> ids) throws IllegalArgumentException {

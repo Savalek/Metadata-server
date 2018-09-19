@@ -3,5 +3,6 @@ logs/*
 lib/*
 *.log
 *.pid
+*.db
 metaserver.iml
 connections-config.json

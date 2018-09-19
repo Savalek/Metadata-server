@@ -11,10 +11,7 @@ import rest.MetaSettings;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,14 +29,14 @@ public class DatabaseCache {
   private ConcurrentHashMap<Integer, DatabaseElement> idsMap = new ConcurrentHashMap<>();
   private ArrayList<String> filter = new ArrayList<>();
 
-  DatabaseCache(String databaseName, String url, String username, String password, String driver) throws ClassNotFoundException {
+  public DatabaseCache(String databaseName, String url, String username, String password, String driver) throws ClassNotFoundException {
     this.databaseName = databaseName;
     this.url = url;
     connectionPool = new ConnectionPool(username, password, url, driver);
     LOGGER.info("Create new DatabaseCache. Name: {}; url: {}.", databaseName, url);
   }
 
-  void updateDatabaseCache() {
+  public void updateDatabaseCache() {
     String defaultThreadName = Thread.currentThread().getName();
     Thread.currentThread().setName(databaseName + "-update");
     LOGGER.info("Start updating '{}' from '{}'", databaseName, url);
@@ -111,9 +108,8 @@ public class DatabaseCache {
       while (iterator.hasNext()) {
         Schema schema = iterator.next().getValue();
         if (!schema.isRelevant()) {
-          idsMap.remove(schema.getId());
-          searchCache.remove(schema);
           iterator.remove();
+          deleteAllInfoRecursively(schema);
         }
       }
 
@@ -175,8 +171,7 @@ public class DatabaseCache {
         Table table = iterator.next();
         if (!table.isRelevant()) {
           iterator.remove();
-          idsMap.remove(table.getId());
-          searchCache.remove(table);
+          deleteAllInfoRecursively(table);
         }
       }
     }));
@@ -254,15 +249,20 @@ public class DatabaseCache {
         Column column = iterator.next();
         if (!column.isRelevant()) {
           iterator.remove();
-          idsMap.remove(column.getId());
-          searchCache.remove(column);
+          deleteAllInfoRecursively(column);
         }
       }
     });
   }
 
+  private void deleteAllInfoRecursively(DatabaseElement element) {
+    idsMap.remove(element.getId());
+    searchCache.remove(element);
+    element.getInnerElements().forEach(this::deleteAllInfoRecursively);
+  }
 
-  void forceRefreshSchema(Integer elementId, boolean isRecursively) {
+
+  public void forceRefreshSchema(Integer elementId, boolean isRecursively) {
     Schema schema = getSchemaById(elementId);
     if (schema == null) {
       LOGGER.error("Schema with id {} not found.", elementId);
@@ -274,7 +274,7 @@ public class DatabaseCache {
     }
   }
 
-  void forceRefreshTable(Integer elementId, Integer schemaId) {
+  public void forceRefreshTable(Integer elementId, Integer schemaId) {
     Schema schema = getSchemaById(schemaId);
     if (schema == null) {
       LOGGER.error("Schema with id {} not found.", schemaId);
@@ -288,16 +288,17 @@ public class DatabaseCache {
     refreshColumns(table.getParentSchema().getName(), table.getName());
   }
 
-  public void setFilter(ArrayList<String> filter) {
-    this.filter = filter;
+  public void setFilter(List<String> filter) {
+    this.filter = new ArrayList<>();
+    this.filter.addAll(filter);
   }
 
-  HashSet<Integer> searchElements(String searchString) {
-    return searchCache.searchElements(searchString);
+  public HashSet<Integer> jstreeGetParentsOfElements(String searchString) {
+    return searchCache.jstreeGetParentsOfElements(searchString);
   }
 
 
-  ConcurrentHashMap<String, Schema> getAllSchemas() {
+  public ConcurrentHashMap<String, Schema> getAllSchemas() {
     return schemas;
   }
 
@@ -346,7 +347,7 @@ public class DatabaseCache {
       info.removeElement(element);
     }
 
-    HashSet<Integer> searchElements(String searchString) throws IllegalArgumentException {
+    HashSet<Integer> jstreeGetParentsOfElements(String searchString) throws IllegalArgumentException {
       ArrayList<Integer> resultIds = new ArrayList<>();
       int findCount = 0;
 
