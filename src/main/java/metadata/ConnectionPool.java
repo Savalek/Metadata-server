@@ -20,8 +20,8 @@ public class ConnectionPool {
   private String password;
   private String url;
 
-  final ArrayList<CPConnection> availableConn = new ArrayList<>();
-  final ArrayList<CPConnection> busyConn = new ArrayList<>();
+  private final ArrayList<CPConnection> availableConn = new ArrayList<>();
+  private final ArrayList<CPConnection> busyConn = new ArrayList<>();
 
   ConnectionPool(String username, String password, String url, String driver) throws ClassNotFoundException {
     this.username = username;
@@ -34,10 +34,10 @@ public class ConnectionPool {
       try {
         LOGGER.info("Close connections to " + url + " (count: " + (availableConn.size() + busyConn.size()) + ")");
         for (CPConnection conn : availableConn) {
-          conn.removeConnection();
+          conn.closeConnection();
         }
         for (CPConnection conn : busyConn) {
-          conn.removeConnection();
+          conn.closeConnection();
         }
       } catch (Exception e) {
         LOGGER.error("Failed to release connections", e);
@@ -64,20 +64,26 @@ public class ConnectionPool {
       }
       connToRemove.forEach(this::removeAndCloseConnection);
 
-      while (availableConn.size() < MetaSettings.RES_POOL_MIN_CONNECTIONS &&
-              (availableConn.size() + busyConn.size()) < MetaSettings.RES_POOL_MAX_CONNECTIONS) {
-        availableConn.add(getNewConnection());
+      try {
+        while (availableConn.size() < MetaSettings.RES_POOL_MIN_CONNECTIONS &&
+                (availableConn.size() + busyConn.size()) < MetaSettings.RES_POOL_MAX_CONNECTIONS) {
+          availableConn.add(getNewConnection());
+        }
+      } catch (SQLException ignored) {
       }
     }
   }
 
-  public synchronized CPConnection getConnection() {
+  public synchronized CPConnection getConnection() throws SQLException {
     try {
       while (busyConn.size() >= MetaSettings.RES_POOL_MAX_CONNECTIONS) {
         this.wait();
       }
       if (availableConn.size() > 0) {
         CPConnection connection = availableConn.remove(availableConn.size() - 1);
+        if (connection.getConnection().isClosed()) {
+          connection = getNewConnection();
+        }
         busyConn.add(connection);
         return connection;
       } else {
@@ -101,20 +107,15 @@ public class ConnectionPool {
     }
   }
 
-  private CPConnection getNewConnection() {
-    try {
-      return new CPConnection(DriverManager.getConnection(url, username, password), this);
-    } catch (Exception e) {
-      LOGGER.error("Can't open new connection", e);
-      return null;
-    }
+  private CPConnection getNewConnection() throws SQLException {
+    return new CPConnection(DriverManager.getConnection(url, username, password), this);
   }
 
   private void removeAndCloseConnection(CPConnection connection) {
     synchronized (availableConn) {
       try {
         availableConn.remove(connection);
-        connection.removeConnection();
+        connection.closeConnection();
       } catch (SQLException e) {
         LOGGER.error("Can't close the connection", e);
       }
@@ -123,6 +124,9 @@ public class ConnectionPool {
 }
 
 class CPConnection implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPool.class);
+  private static boolean connNetTimeoutException = false;
+
   private Connection connection;
   private ConnectionPool connectionPool;
   private long lastUsed;
@@ -133,6 +137,14 @@ class CPConnection implements AutoCloseable {
     this.connectionPool = connectionPool;
     lastUsed = System.currentTimeMillis();
     createTime = System.currentTimeMillis();
+    try {
+      this.connection.setNetworkTimeout(null, MetaSettings.JDBC_CONNECTION_NETWORK_TIMEOUT * 1000);
+    } catch (SQLException e) {
+      if (!connNetTimeoutException) {
+        LOGGER.warn("JDBC connection method 'setNetworkTimeout()' is not yet implemented.");
+      }
+      connNetTimeoutException = true;
+    }
   }
 
   public Connection getConnection() {
@@ -145,7 +157,7 @@ class CPConnection implements AutoCloseable {
     connectionPool.releaseConnection(this);
   }
 
-  void removeConnection() throws SQLException {
+  void closeConnection() throws SQLException {
     connection.close();
   }
 

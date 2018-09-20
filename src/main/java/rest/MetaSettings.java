@@ -13,6 +13,7 @@ public class MetaSettings {
   public static int CACHE_TTL = 600;                        // default
   public static int JSTREE_SEARCH_LIMIT = 20;               // default
   public static int PARALLEL_UPDATE_DB_COUNT = 4;           // default
+  public static int JDBC_CONNECTION_NETWORK_TIMEOUT = 60;   // default
 
   public static String CONNECTIONS_CONFIG_FILE_PATH;
 
@@ -49,5 +50,10 @@ public class MetaSettings {
   @Value("${PARALLEL_UPDATE_DB_COUNT}")
   public void setParallelUpdateDbCount(int parallelUpdateDbCount) {
     PARALLEL_UPDATE_DB_COUNT = parallelUpdateDbCount;
+  }
+
+  @Value("${JDBC_CONNECTION_NETWORK_TIMEOUT}")
+  public void setJdbcConnectionTimeout(int jdbcConnectionTimeout) {
+    JDBC_CONNECTION_NETWORK_TIMEOUT = jdbcConnectionTimeout;
   }
 }
