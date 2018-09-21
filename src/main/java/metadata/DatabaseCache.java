@@ -54,8 +54,12 @@ public class DatabaseCache {
               refreshTables(f);
               refreshColumns(f, null);
             } catch (SQLException e) {
-              LOGGER.error("Error then try update database: {} | URL: {}", databaseName, url);
-              executorService.shutdown();
+              String errMessage = e.getMessage();
+              String causedByMessage = e.getCause().getMessage();
+              LOGGER.warn("Error then try update database: {} | URL: {} | error: {} | caused by: {}",
+                      databaseName, url, errMessage, causedByMessage);
+              executorService.shutdownNow();
+
             }
           });
         }
@@ -65,8 +69,11 @@ public class DatabaseCache {
             refreshTables(null);
             refreshColumns(null, null);
           } catch (SQLException e) {
-            LOGGER.error("Error then try update database: {} | URL: {}", databaseName, url);
-            executorService.shutdown();
+            String errMessage = e.getMessage();
+            String causedByMessage = e.getCause().getMessage();
+            LOGGER.warn("Error then try update database: {} | URL: {} | error: {} | caused by: {}",
+                    databaseName, url, errMessage, causedByMessage);
+            executorService.shutdownNow();
           }
         });
       }
@@ -82,7 +89,7 @@ public class DatabaseCache {
         Thread.currentThread().setName(defaultThreadName);
       }
     } catch (SQLException e) {
-      LOGGER.error("Database '{}' is not available! URL: {}", databaseName, url, e);
+      LOGGER.warn("Database '{}' is not available! URL: {}", databaseName, url, e);
     }
   }
 
