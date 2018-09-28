@@ -47,7 +47,7 @@ public class DatabaseCache {
 
       ExecutorService executorService = Executors.newFixedThreadPool(Math.max(filter.size(), 1));
 
-      if (filter.size() > 0) {
+      if (filter.size() > 0 && MetaSettings.REQUEST_FOR_EVERY_FILTER) {
         for (String f : filter) {
           executorService.submit(() -> {
             try {

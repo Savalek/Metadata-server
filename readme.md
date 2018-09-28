@@ -19,3 +19,4 @@ Example: `./metadata-server.sh start`
 `CACHE_TTL` - interval of full metadata update (in seconds)  
 `JSTREE_SEARCH_LIMIT` - the maximum number of elements to display when searching  
 `PARALLEL_UPDATE_DB_COUNT` - the maximum number of simultaneously updated databases   
+`REQUEST_FOR_EVERY_FILTER` - true: do request for every filter item when database cache updating. false - do only one request when updating. (Recommended `false` only if you have many filters)
