@@ -6,6 +6,7 @@ server settings in `conf\application.properties`
 database connection settings in `conf\connections-config.json`  
 (examples in `connections-config.json.template`)
 
+To package project run in console `mvn package`  
 To run server from console use `bin/metadata-server.sh`.  
 Available commands: `start`, `stop`, `reload`  
 Example: `./metadata-server.sh start`
