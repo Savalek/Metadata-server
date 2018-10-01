@@ -11,10 +11,7 @@ import rest.MetaSettings;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,50 +29,71 @@ public class DatabaseCache {
   private ConcurrentHashMap<Integer, DatabaseElement> idsMap = new ConcurrentHashMap<>();
   private ArrayList<String> filter = new ArrayList<>();
 
-  DatabaseCache(String databaseName, String url, String username, String password, String driver) throws ClassNotFoundException {
+  public DatabaseCache(String databaseName, String url, String username, String password, String driver) throws ClassNotFoundException {
     this.databaseName = databaseName;
     this.url = url;
     connectionPool = new ConnectionPool(username, password, url, driver);
     LOGGER.info("Create new DatabaseCache. Name: {}; url: {}.", databaseName, url);
   }
 
-  void updateDatabaseCache() {
-    String defaultThreadName = Thread.currentThread().getName();
-    Thread.currentThread().setName(databaseName + "-update");
-    LOGGER.info("Start updating '{}' from '{}'", databaseName, url);
-    long START_TIME = System.currentTimeMillis();
+  public void updateDatabaseCache() {
+    try {
+      String defaultThreadName = Thread.currentThread().getName();
+      Thread.currentThread().setName(databaseName + "-update");
+      LOGGER.info("Start updating '{}' from '{}'", databaseName, url);
+      long START_TIME = System.currentTimeMillis();
 
-    refreshAllSchemas();
+      refreshAllSchemas();
 
-    ExecutorService executorService = Executors.newFixedThreadPool(Math.max(filter.size(), 1));
+      ExecutorService executorService = Executors.newFixedThreadPool(Math.max(filter.size(), 1));
 
-    if (filter.size() > 0) {
-      for (String f : filter) {
+      if (filter.size() > 0 && MetaSettings.REQUEST_FOR_EVERY_FILTER) {
+        for (String f : filter) {
+          executorService.submit(() -> {
+            try {
+              refreshTables(f);
+              refreshColumns(f, null);
+            } catch (SQLException e) {
+              String errMessage = e.getMessage();
+              String causedByMessage = e.getCause().getMessage();
+              LOGGER.warn("Error then try update database: {} | URL: {} | error: {} | caused by: {}",
+                      databaseName, url, errMessage, causedByMessage);
+              executorService.shutdownNow();
+
+            }
+          });
+        }
+      } else {
         executorService.submit(() -> {
-          refreshTables(f);
-          refreshColumns(f, null);
+          try {
+            refreshTables(null);
+            refreshColumns(null, null);
+          } catch (SQLException e) {
+            String errMessage = e.getMessage();
+            String causedByMessage = e.getCause().getMessage();
+            LOGGER.warn("Error then try update database: {} | URL: {} | error: {} | caused by: {}",
+                    databaseName, url, errMessage, causedByMessage);
+            executorService.shutdownNow();
+          }
         });
       }
-    } else {
-      executorService.submit(() -> {
-        refreshTables(null);
-        refreshColumns(null, null);
-      });
-    }
 
-    try {
-      executorService.shutdown();
-      executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-    } catch (InterruptedException e) {
-      LOGGER.error("Can't shutdown executorService", e);
-    } finally {
-      LOGGER.info("Complete updating '{}' from '{}' | elements in database: {} | time: {} ms.",
-              databaseName, url, idsMap.size(), (System.currentTimeMillis() - START_TIME));
-      Thread.currentThread().setName(defaultThreadName);
+      try {
+        executorService.shutdown();
+        executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+      } catch (InterruptedException e) {
+        LOGGER.error("Can't shutdown executorService", e);
+      } finally {
+        LOGGER.info("Complete updating '{}' from '{}' | elements in database: {} | time: {} ms.",
+                databaseName, url, idsMap.size(), (System.currentTimeMillis() - START_TIME));
+        Thread.currentThread().setName(defaultThreadName);
+      }
+    } catch (SQLException e) {
+      LOGGER.warn("Database '{}' is not available! URL: {}", databaseName, url, e);
     }
   }
 
-  private void refreshAllSchemas() {
+  private void refreshAllSchemas() throws SQLException {
 
     try (CPConnection connection = connectionPool.getConnection();
          ResultSet result = connection.getMetaData().getSchemas()) {
@@ -111,31 +129,27 @@ public class DatabaseCache {
       while (iterator.hasNext()) {
         Schema schema = iterator.next().getValue();
         if (!schema.isRelevant()) {
-          idsMap.remove(schema.getId());
-          searchCache.remove(schema);
           iterator.remove();
+          deleteAllInfoRecursively(schema);
         }
       }
-
-    } catch (SQLException e) {
-      LOGGER.error("Can't refresh schemas from {}", url, e);
     }
   }
 
-  private void refreshTables(String schemaPattern) {
+  private void refreshTables(String schemaPattern) throws SQLException {
     String regularSchema = schemaPattern == null ? ".*" : schemaPattern.replace("%", ".*");
-
-    // list of schemas by filter
-    ArrayList<Schema> schemasList = new ArrayList<>();
-    getAllSchemas().entrySet().stream()
-            .filter(entry -> entry.getKey().matches(regularSchema))
-            .forEach(entry -> {
-              schemasList.add(entry.getValue());
-              entry.getValue().getAllTables().forEach(t -> t.setRelevant(false));
-            });
 
     try (CPConnection connection = connectionPool.getConnection();
          ResultSet resultSet = connection.getMetaData().getTables(null, schemaPattern, null, null)) {
+
+      // list of schemas by filter
+      ArrayList<Schema> schemasList = new ArrayList<>();
+      getAllSchemas().entrySet().stream()
+              .filter(entry -> entry.getKey().matches(regularSchema))
+              .forEach(entry -> {
+                schemasList.add(entry.getValue());
+                entry.getValue().getAllTables().forEach(t -> t.setRelevant(false));
+              });
 
       Schema schema = null;
       while (resultSet.next()) {
@@ -165,42 +179,41 @@ public class DatabaseCache {
         table.setRelevant(true);
         table.setDescription(tableDescription);
       }
-    } catch (SQLException e) {
-      LOGGER.error("Can't refresh table from {}", url, e);
-    }
 
-    schemasList.forEach((schema -> {
-      Iterator<Table> iterator = schema.getAllTables().iterator();
-      while (iterator.hasNext()) {
-        Table table = iterator.next();
-        if (!table.isRelevant()) {
-          iterator.remove();
-          idsMap.remove(table.getId());
-          searchCache.remove(table);
+      schemasList.forEach((curSchema -> {
+        Iterator<Table> iterator = curSchema.getAllTables().iterator();
+        while (iterator.hasNext()) {
+          Table table = iterator.next();
+          if (!table.isRelevant()) {
+            iterator.remove();
+            deleteAllInfoRecursively(table);
+          }
         }
-      }
-    }));
+      }));
+
+    }
   }
 
 
-  private void refreshColumns(String schemaPattern, String tablePattern) {
+  private void refreshColumns(String schemaPattern, String tablePattern) throws SQLException {
     String regularSchema = schemaPattern == null ? ".*" : schemaPattern.replace("%", ".*");
     String regularTable = tablePattern == null ? ".*" : tablePattern.replace("%", ".*");
 
-    // list of tables by filter
-    ArrayList<Table> tableList = new ArrayList<>();
-    getAllSchemas().entrySet().stream()
-            .filter(entry -> entry.getKey().matches(regularSchema))
-            .map(Map.Entry::getValue)
-            .flatMap(schema -> schema.getAllTables().stream())
-            .filter(table -> table.getName().matches(regularTable))
-            .forEach(table -> {
-              tableList.add(table);
-              table.getAllColumns().forEach(column -> column.setRelevant(false));
-            });
-
     try (CPConnection connection = connectionPool.getConnection();
          ResultSet resultSet = connection.getMetaData().getColumns(null, schemaPattern, tablePattern, null)) {
+
+      // list of tables by filter
+      ArrayList<Table> tableList = new ArrayList<>();
+      getAllSchemas().entrySet().stream()
+              .filter(entry -> entry.getKey().matches(regularSchema))
+              .map(Map.Entry::getValue)
+              .flatMap(schema -> schema.getAllTables().stream())
+              .filter(table -> table.getName().matches(regularTable))
+              .forEach(table -> {
+                tableList.add(table);
+                table.getAllColumns().forEach(column -> column.setRelevant(false));
+              });
+
       Schema schema = null;
       Table table = null;
       while (resultSet.next()) {
@@ -244,37 +257,47 @@ public class DatabaseCache {
         column.setDescription(columnDescription);
         column.setValueType(columnType);
       }
-    } catch (SQLException e) {
-      LOGGER.error("Can't refresh columns from {}", url, e);
-    }
 
-    tableList.forEach(table -> {
-      Iterator<Column> iterator = table.getAllColumns().iterator();
-      while (iterator.hasNext()) {
-        Column column = iterator.next();
-        if (!column.isRelevant()) {
-          iterator.remove();
-          idsMap.remove(column.getId());
-          searchCache.remove(column);
+      tableList.forEach(curTable -> {
+        Iterator<Column> iterator = curTable.getAllColumns().iterator();
+        while (iterator.hasNext()) {
+          Column column = iterator.next();
+          if (!column.isRelevant()) {
+            iterator.remove();
+            deleteAllInfoRecursively(column);
+          }
         }
-      }
-    });
+      });
+
+    }
+  }
+
+  private void deleteAllInfoRecursively(DatabaseElement element) {
+    idsMap.remove(element.getId());
+    searchCache.remove(element);
+    element.getInnerElements().forEach(this::deleteAllInfoRecursively);
   }
 
 
-  void forceRefreshSchema(Integer elementId, boolean isRecursively) {
+  public void forceRefreshSchema(Integer elementId, boolean isRecursively) {
     Schema schema = getSchemaById(elementId);
     if (schema == null) {
       LOGGER.error("Schema with id {} not found.", elementId);
       return;
     }
-    refreshTables(schema.getName());
-    if (isRecursively) {
-      refreshColumns(schema.getName(), null);
+    try {
+      LOGGER.info("User try update schema '{}' (recursively: {})", schema.getName(), isRecursively);
+      refreshTables(schema.getName());
+      if (isRecursively) {
+        refreshColumns(schema.getName(), null);
+      }
+    } catch (SQLException e) {
+      LOGGER.error("Error then try force refresh schema '{}'. Database: {} | URL: {} | error message: {}",
+              schema.getName(), databaseName, url, e.getMessage());
     }
   }
 
-  void forceRefreshTable(Integer elementId, Integer schemaId) {
+  public void forceRefreshTable(Integer elementId, Integer schemaId) {
     Schema schema = getSchemaById(schemaId);
     if (schema == null) {
       LOGGER.error("Schema with id {} not found.", schemaId);
@@ -285,19 +308,26 @@ public class DatabaseCache {
       LOGGER.error("Table with id not found.", elementId);
       return;
     }
-    refreshColumns(table.getParentSchema().getName(), table.getName());
+    try {
+      LOGGER.info("User try update table '{}.{}'", table.getParentSchema().getName(), table.getName());
+      refreshColumns(table.getParentSchema().getName(), table.getName());
+    } catch (SQLException e) {
+      LOGGER.error("Error then try force refresh table '{}'. Database: {} | URL: {} | error message: {}",
+              table.getName(), databaseName, url, e.getMessage());
+    }
   }
 
-  public void setFilter(ArrayList<String> filter) {
-    this.filter = filter;
+  public void setFilter(List<String> filter) {
+    this.filter = new ArrayList<>();
+    this.filter.addAll(filter);
   }
 
-  HashSet<Integer> searchElements(String searchString) {
-    return searchCache.searchElements(searchString);
+  public HashSet<Integer> jstreeGetParentsOfElements(String searchString) {
+    return searchCache.jstreeGetParentsOfElements(searchString);
   }
 
 
-  ConcurrentHashMap<String, Schema> getAllSchemas() {
+  public ConcurrentHashMap<String, Schema> getAllSchemas() {
     return schemas;
   }
 
@@ -346,7 +376,7 @@ public class DatabaseCache {
       info.removeElement(element);
     }
 
-    HashSet<Integer> searchElements(String searchString) throws IllegalArgumentException {
+    HashSet<Integer> jstreeGetParentsOfElements(String searchString) throws IllegalArgumentException {
       ArrayList<Integer> resultIds = new ArrayList<>();
       int findCount = 0;
 

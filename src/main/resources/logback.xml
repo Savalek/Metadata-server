@@ -3,7 +3,7 @@
 
     <appender name="FILE_APPENDER" class="ch.qos.logback.core.rolling.RollingFileAppender">
 
-        <file>logs/metaserver_today.log</file>
+        <file>${LOGS_DIR}/metaserver_today.log</file>
 
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <Pattern>[%d{yyyy-MM-dd HH:mm:ss:SSS}]-[%5level]-[thread: %thread] - %msg%n</Pattern>
@@ -11,7 +11,7 @@
 
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- rollover daily -->
-            <fileNamePattern>logs/archived/metaserver.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOGS_DIR}/archived/metaserver.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>7</maxHistory>
         </rollingPolicy>
@@ -20,28 +20,28 @@
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>[%yellow(%d{yyyy-MM-dd HH:mm:ss:SSS})]-[%highlight(%5level)]-[%boldCyan(%thread)] - %boldWhite(%msg%n)</pattern>
+            <pattern>[%yellow(%d{yyyy-MM-dd HH:mm:ss:SSS})]-[%highlight(%-5level)]-[%boldCyan(%thread)] - %boldWhite(%msg%n)</pattern>
         </encoder>
     </appender>
 
-    <!--<appender name="HTML_APPENDER" class="ch.qos.logback.core.rolling.RollingFileAppender" >-->
+<!--    <appender name="HTML_APPENDER" class="ch.qos.logback.core.rolling.RollingFileAppender" >
 
-        <!--<file>logs/metaserver_logs.html</file>-->
+        <file>${LOGS_DIR}/metaserver_logs.html</file>
 
-        <!--<encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">-->
-            <!--<layout class="ch.qos.logback.classic.html.HTMLLayout">-->
-                <!--<pattern>%d{yyyy-MM-dd HH:mm:ss:SSS}%level%thread%msg</pattern>-->
-            <!--</layout>-->
-        <!--</encoder>-->
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="ch.qos.logback.classic.html.HTMLLayout">
+                <pattern>%d{yyyy-MM-dd HH:mm:ss:SSS}%level%thread%msg</pattern>
+            </layout>
+        </encoder>
 
-        <!--<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">-->
-            <!--&lt;!&ndash; rollover daily &ndash;&gt;-->
-            <!--<fileNamePattern>logs/archived/metaserver_logs.%d{yyyy-MM-dd}.%i.html</fileNamePattern>-->
-            <!--<maxFileSize>10MB</maxFileSize>-->
-            <!--<maxHistory>7</maxHistory>-->
-        <!--</rollingPolicy>-->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            &lt;!&ndash; rollover daily &ndash;&gt;
+            <fileNamePattern>${LOGS_DIR}/archived/metaserver_logs.%d{yyyy-MM-dd}.%i.html</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
 
-    <!--</appender>-->
+    </appender>-->
 
 
     <root level="info">

@@ -32,8 +32,13 @@ public class MetadataCacheServer {
 
     // create database cache from config file
     try {
-      JsonElement element = new JsonParser()
-              .parse(new FileReader("src/main/resources/connections-config.json"));
+      FileReader fileReader;
+      try {
+        fileReader = new FileReader(MetaSettings.CONNECTIONS_CONFIG_FILE_PATH);
+      } catch (Exception e) {
+        fileReader = new FileReader("conf/connections-config.json");
+      }
+      JsonElement element = new JsonParser().parse(fileReader);
 
       JsonObject json = element.getAsJsonObject();
       json.entrySet().forEach(entry -> {
@@ -51,7 +56,7 @@ public class MetadataCacheServer {
         createDatabaseCache(dbName, url, username, password, driver, filter);
       });
     } catch (FileNotFoundException e) {
-      LOGGER.error("Configuration file not found");
+      LOGGER.error("Configuration file with connections not found", e);
     }
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> LOGGER.info("SHUTDOWN METADATA SERVER!")));
@@ -137,7 +142,7 @@ public class MetadataCacheServer {
 
   public HashSet<Integer> jstreeSearch(String databaseName, String searchString) throws IllegalArgumentException {
     DatabaseCache db = getDatabaseCache(databaseName);
-    return db.searchElements(searchString);
+    return db.jstreeGetParentsOfElements(searchString);
   }
 
   public JsonObject jstreeMassload(String databaseName, ArrayList<Integer> ids) throws IllegalArgumentException {

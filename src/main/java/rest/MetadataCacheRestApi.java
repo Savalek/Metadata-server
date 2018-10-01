@@ -3,16 +3,16 @@ package rest;
 import metadata.MetadataCacheServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @RestController
 @CrossOrigin
@@ -22,6 +22,7 @@ public class MetadataCacheRestApi {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheRestApi.class);
 
   private MetadataCacheServer server = new MetadataCacheServer();
+  private ExecutorService forceRefreshService = Executors.newCachedThreadPool();
 
 
   /**
@@ -29,7 +30,6 @@ public class MetadataCacheRestApi {
    */
   @RequestMapping(value = "/jstree/databases_list", produces = "application/json")
   public ArrayList<String> getAllDatabases() {
-    MetaSettings settings = new MetaSettings();
     return server.getAllDatabasesNames();
   }
 
@@ -38,9 +38,9 @@ public class MetadataCacheRestApi {
    */
   @RequestMapping(value = "/jstree/get_children", produces = "application/json")
   public String jstreeGetChildren(@RequestParam("database") String databaseName,
-                                                 @RequestParam("id") String elementId,
-                                                 @RequestParam(value = "type", required = false) String type,
-                                                 @RequestParam(value = "schemaId", required = false) String schemaId) {
+                                  @RequestParam("id") String elementId,
+                                  @RequestParam(value = "type", required = false) String type,
+                                  @RequestParam(value = "schemaId", required = false) String schemaId) {
     try {
       if (elementId.equals("#")) {
         return server.jstreeGetRootElements(databaseName).toString();
@@ -65,9 +65,11 @@ public class MetadataCacheRestApi {
                                       @RequestParam(value = "recursively", required = false) Boolean isRecursively) {
 
     try {
-      isRecursively = isRecursively == null ? false : isRecursively;
-      server.jstreeRefreshElement(databaseName, getValue(elementId),
-              getValue(schemaId), isRecursively);
+      boolean refreshRecursively = isRecursively == null ? false : isRecursively;
+      forceRefreshService.submit(
+              () -> server.jstreeRefreshElement(databaseName, getValue(elementId), getValue(schemaId), refreshRecursively)
+      );
+
       return true;
     } catch (IllegalArgumentException e) {
       LOGGER.error("Invalid parameters!", e);
@@ -80,7 +82,7 @@ public class MetadataCacheRestApi {
    */
   @RequestMapping(value = "/jstree/massload", produces = "application/json")
   public String jstreeMassload(@RequestParam("database") String databaseName,
-                                   @RequestParam("ids") String elementIds) {
+                               @RequestParam("ids") String elementIds) {
 
     String[] strIds = elementIds.split(",");
     ArrayList<Integer> ids = new ArrayList<>(strIds.length);
