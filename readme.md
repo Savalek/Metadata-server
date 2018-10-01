@@ -11,6 +11,14 @@ To run server from console use `bin/metadata-server.sh`.
 Available commands: `start`, `stop`, `reload`  
 Example: `./metadata-server.sh start`
 
+To run in your IDE set run parameters:  
+spring.config.location `./conf/`  
+connections.config `./conf/connections-config.json`  
+
+<p align="center">
+  <img src="https://github.com/Savalek/Metadata-server/blob/master/docs/img/inv_var.png">
+</p>  
+
 ### application.properties :
 `server.port` - port to connect to the server  
 `RES_POOL_MIN_CONNECTIONS` - minimum amount of live connection to the resource pool  
