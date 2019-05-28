@@ -21,7 +21,7 @@ public class MetadataCacheRestApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheRestApi.class);
 
-  private MetadataCacheServer server = new MetadataCacheServer();
+  private MetadataCacheServer server = MetadataCacheServer.getInstance();
   private ExecutorService forceRefreshService = Executors.newCachedThreadPool();
 
 

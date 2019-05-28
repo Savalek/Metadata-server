@@ -28,4 +28,7 @@ connections.config `./conf/connections-config.json`
 `CACHE_TTL` - interval of full metadata update (in seconds)  
 `JSTREE_SEARCH_LIMIT` - the maximum number of elements to display when searching  
 `PARALLEL_UPDATE_DB_COUNT` - the maximum number of simultaneously updated databases   
-`REQUEST_FOR_EVERY_FILTER` - true: do request for every filter item when database cache updating. false - do only one request when updating. (Recommended `false` only if you have many filters)
+`REQUEST_FOR_EVERY_FILTER` - true: do request for every filter item when database cache updating. false - do only one request when updating. (Recommended `false` only if you have many filters)  
+`ICON_FOLDER_PATH=` - path to icons folder (it folder contains subfolder with resolution name 16,32,64 etc. In subfolder placed  
+ `png` icons. The name of the icon matches the name of the item type in the database `table.png, column.png`.  
+ If the icon for the type is not found, the `field_image.png` icon will be displayed.)

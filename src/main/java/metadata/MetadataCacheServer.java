@@ -25,8 +25,16 @@ public class MetadataCacheServer {
 
   private HashMap<String, DatabaseCache> databases = new HashMap<>();
   private ScheduledExecutorService updateDatabaseCacheService;
+  private static MetadataCacheServer singleton;
 
-  public MetadataCacheServer() {
+  public synchronized static MetadataCacheServer getInstance() {
+    if (singleton == null) {
+      singleton = new MetadataCacheServer();
+    }
+    return singleton;
+  }
+
+  private MetadataCacheServer() {
     LOGGER.info("Init MetadataCacheServer");
     this.updateDatabaseCacheService = Executors.newScheduledThreadPool(MetaSettings.PARALLEL_UPDATE_DB_COUNT);
 
@@ -115,7 +123,7 @@ public class MetadataCacheServer {
       if (type.equals("schema")) {
         Schema schema = db.getSchemaById(elementId);
         if (schema != null) {
-          schema.getAllTables().forEach(t -> jsonElements.add(t.toJson()));
+          schema.getAllTables().forEach(t -> jsonElements.add(jsonWithImage(t.toJson())));
         }
         return jsonElements;
       }
@@ -124,7 +132,7 @@ public class MetadataCacheServer {
         if (schema != null) {
           Table table = schema.getTableById(elementId);
           if (table != null) {
-            table.getAllColumns().forEach(c -> jsonElements.add(c.toJson()));
+            table.getAllColumns().forEach(c -> jsonElements.add(jsonWithImage(c.toJson())));
           }
           return jsonElements;
         }
@@ -133,10 +141,15 @@ public class MetadataCacheServer {
     return jsonElements;
   }
 
+  private static JsonObject jsonWithImage(JsonObject jsonObject) {
+    jsonObject.addProperty("icon_name", jsonObject.get("type").getAsString() + ".png");
+    return jsonObject;
+  }
+
   public ArrayList<JsonObject> jstreeGetRootElements(String databaseName) throws IllegalArgumentException {
     ArrayList<JsonObject> jsonElements = new ArrayList<>();
     DatabaseCache db = getDatabaseCache(databaseName);
-    db.getAllSchemas().forEach((key, value) -> jsonElements.add(value.toJson()));
+    db.getAllSchemas().forEach((key, value) -> jsonElements.add(jsonWithImage(value.toJson())));
     return jsonElements;
   }
 
@@ -155,7 +168,7 @@ public class MetadataCacheServer {
 
       if (dbElement != null) {
         for (DatabaseElement elem : dbElement.getInnerElements()) {
-          list.add(elem.toJson());
+          list.add(jsonWithImage(elem.toJson()));
         }
         resJson.add(String.valueOf(id), list);
       }
