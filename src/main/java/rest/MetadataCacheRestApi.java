@@ -3,10 +3,7 @@ package rest;
 import metadata.MetadataCacheServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -131,6 +128,14 @@ public class MetadataCacheRestApi {
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  /**
+   * Search method for JsTree
+   */
+  @RequestMapping(value = "/{database_name}/snapshot", produces = "application/json")
+  public String jstreeSearch(@PathVariable("database_name") String databaseName) throws InterruptedException {
+      return server.getSnapshot(databaseName);
   }
 
 }

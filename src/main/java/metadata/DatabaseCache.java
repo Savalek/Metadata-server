@@ -28,6 +28,7 @@ public class DatabaseCache {
   private SearchCache searchCache = new SearchCache();
   private ConcurrentHashMap<Integer, DatabaseElement> idsMap = new ConcurrentHashMap<>();
   private ArrayList<String> filter = new ArrayList<>();
+  private boolean cacheIsLoaded = false;
 
   public DatabaseCache(String databaseName, String url, String username, String password, String driver) throws ClassNotFoundException {
     this.databaseName = databaseName;
@@ -84,6 +85,7 @@ public class DatabaseCache {
       } catch (InterruptedException e) {
         LOGGER.error("Can't shutdown executorService", e);
       } finally {
+        cacheIsLoaded = true;
         LOGGER.info("Complete updating '{}' from '{}' | elements in database: {} | time: {} ms.",
                 databaseName, url, idsMap.size(), (System.currentTimeMillis() - START_TIME));
         Thread.currentThread().setName(defaultThreadName);
@@ -91,6 +93,10 @@ public class DatabaseCache {
     } catch (SQLException e) {
       LOGGER.warn("Database '{}' is not available! URL: {}", databaseName, url, e);
     }
+  }
+
+  public boolean isCacheIsLoaded() {
+    return cacheIsLoaded;
   }
 
   private void refreshAllSchemas() throws SQLException {

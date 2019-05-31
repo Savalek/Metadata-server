@@ -1,9 +1,7 @@
 package metadata;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
+import metadata.element.Column;
 import metadata.element.DatabaseElement;
 import metadata.element.Schema;
 import metadata.element.Table;
@@ -13,9 +11,7 @@ import rest.MetaSettings;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -200,6 +196,28 @@ public class MetadataCacheServer {
     } catch (Exception initError) {
       throw new IllegalArgumentException("Can't refresh element. ", initError);
     }
+  }
+
+  public String getSnapshot(String databaseName) throws InterruptedException {
+    DatabaseCache databaseCache = getDatabaseCache(databaseName);
+    while (!databaseCache.isCacheIsLoaded()) {
+      Thread.sleep(250);
+    }
+
+    Map<String, Map<String, List<String>>> schemas = new HashMap<>();
+    for (Schema schema : databaseCache.getAllSchemas().values()) {
+      Map<String, List<String>> tables = new HashMap<>();
+      for (Table table : schema.getAllTables()) {
+        List<String> columns = new ArrayList<>();
+        for (Column column : table.getAllColumns()) {
+          columns.add(column.getName());
+        }
+        tables.put(table.getName(), columns);
+      }
+      schemas.put(schema.getName(), tables);
+    }
+
+    return new Gson().toJson(schemas);
   }
 }
 
