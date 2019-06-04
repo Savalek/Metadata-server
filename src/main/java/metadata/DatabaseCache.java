@@ -146,7 +146,7 @@ public class DatabaseCache {
     String regularSchema = schemaPattern == null ? ".*" : schemaPattern.replace("%", ".*");
 
     try (CPConnection connection = connectionPool.getConnection();
-         ResultSet resultSet = connection.getMetaData().getTables(null, schemaPattern, null, null)) {
+         ResultSet resultSet = connection.getMetaData().getTables(null, schemaPattern, null, new String[]{"TABLE", "VIEW"})) {
 
       // list of schemas by filter
       ArrayList<Schema> schemasList = new ArrayList<>();
